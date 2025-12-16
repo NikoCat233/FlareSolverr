@@ -31,12 +31,18 @@ jobs:
           cd src
           python build_package.py
 
+      # 可选：如果需要自动生成 tag/changelog 的 action，确保把 token 放 env（不要放在 with）
+      # - name: Auto Tag (optional)
+      #   uses: Klemensas/action-autotag@stable
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     version: "patch"
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          # artifact 名称会包含运行的操作系统，便于区分不同 runner 的产物
           name: flaresolverr-${{ matrix.os }}
-          # 同时尝试上传常见的产物目录（repo 根目录的 dist 或 src 下的 dist）
           path: |
             ./dist
             ./src/dist

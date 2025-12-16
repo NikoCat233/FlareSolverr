@@ -1,4 +1,4 @@
-name: Release
+name: Build and upload artifacts
 
 on:
   push:
@@ -6,37 +6,13 @@ on:
       - "v*.*.*"
 
 jobs:
-  create-release:
-    name: Create release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Build changelog
-        id: github_changelog
-        run: |
-          changelog=$(git log $(git tag | tail -2 | head -1)..HEAD --no-merges --oneline)
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$changelog" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          body: ${{ steps.github_changelog.outputs.changelog }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-
   build-package:
     name: Build binaries
-    needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -48,16 +24,20 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Build artifacts
+      - name: Install dependencies & Build artifacts
         run: |
           python -m pip install -r requirements.txt
           python -m pip install pyinstaller==6.17.0
           cd src
           python build_package.py
 
-      - name: Upload release artifacts
-        uses: softprops/action-gh-release@v2
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
-          files: ./dist/flaresolverr_*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          # artifact 名称会包含运行的操作系统，便于区分不同 runner 的产物
+          name: flaresolverr-${{ matrix.os }}
+          # 同时尝试上传常见的产物目录（repo 根目录的 dist 或 src 下的 dist）
+          path: |
+            ./dist
+            ./src/dist
+          retention-days: 7

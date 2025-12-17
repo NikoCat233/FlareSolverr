@@ -1,63 +1,48 @@
-name: Release
+name: Build and upload artifacts
 
 on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '可选：指定要构建的 tag（例如 v1.2.3）。留空则使用触发时的 ref。'
+        required: false
+        default: ''
 
 jobs:
-  create-release:
-    name: Create release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Build changelog
-        id: github_changelog
-        run: |
-          changelog=$(git log $(git tag | tail -2 | head -1)..HEAD --no-merges --oneline)
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$changelog" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          body: ${{ steps.github_changelog.outputs.changelog }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-
   build-package:
     name: Build binaries
-    needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          # 如果 workflow_dispatch 提供了 inputs.tag 就使用它，否则使用 github.ref（push 触发时为 tag）
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
 
-      - name: Build artifacts
+      - name: Install dependencies & Build artifacts
         run: |
           python -m pip install -r requirements.txt
           python -m pip install pyinstaller==6.17.0
           cd src
           python build_package.py
-
-      - name: Upload release artifacts
-        uses: softprops/action-gh-release@v2
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
-          files: ./dist/flaresolverr_*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          name: flaresolverr-${{ matrix.os }}
+          path: |
+            ./dist
+            ./src/dist
+          retention-days: 7

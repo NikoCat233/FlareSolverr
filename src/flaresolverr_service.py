@@ -339,11 +339,13 @@ def _evil_logic(req: V1RequestBase, driver: WebDriver, method: str) -> Challenge
     res.message = ""
 
     # optionally block resources like images/css/fonts using CDP
+    block_urls = []
+    
     disable_media = utils.get_config_disable_media()
     if req.disableMedia is not None:
         disable_media = req.disableMedia
     if disable_media:
-        block_urls = [
+        block_urls.extend([
             # Images
             "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.bmp", "*.svg", "*.ico",
             "*.PNG", "*.JPG", "*.JPEG", "*.GIF", "*.WEBP", "*.BMP", "*.SVG", "*.ICO",
@@ -355,7 +357,23 @@ def _evil_logic(req: V1RequestBase, driver: WebDriver, method: str) -> Challenge
             # Fonts
             "*.woff", "*.woff2", "*.ttf", "*.otf", "*.eot",
             "*.WOFF", "*.WOFF2", "*.TTF", "*.OTF", "*.EOT"
-        ]
+        ])
+
+    myfilter = utils.get_config__myfilter()
+    if req.myfilter is not None:
+        myfilter = req.myfilter
+    if myfilter:
+        block_urls.extend([
+            # Block static.*.io domain (where * is 4 letters)
+            "*static.????.io*",
+            # Block URLs containing 'google'
+            "*google*",
+            # Block URLs containing 'gstatic'
+            "*gstatic*"
+        ])
+
+    # Apply unified block list if not empty
+    if block_urls:
         try:
             logging.debug("Network.setBlockedURLs: %s", block_urls)
             driver.execute_cdp_cmd("Network.enable", {})

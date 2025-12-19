@@ -365,11 +365,11 @@ def _evil_logic(req: V1RequestBase, driver: WebDriver, method: str) -> Challenge
     if myfilter:
         block_urls.extend([
             # Block static.*.io domain (where * is 4 letters)
-            "*static.*.io*",
+            "*static.itch.io*",
             # Block URLs containing 'google'
             "*google*",
             # Block URLs containing 'gstatic'
-            "*gstatic*",
+            "*gstatic*"
         ])
 
     # Apply unified block list if not empty
